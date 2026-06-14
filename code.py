@@ -60,6 +60,11 @@ class Colors:
     LIME       = 0x76FF03
 
 # ──────────────────────────────────────────────
+#  DIRECTORIES — Create before logging
+# ──────────────────────────────────────────────
+os.makedirs('/opt/CryzonCloud/backups', exist_ok=True)
+
+# ──────────────────────────────────────────────
 #  LOGGING
 # ──────────────────────────────────────────────
 logging.basicConfig(
@@ -348,7 +353,7 @@ def resource_monitor():
             if cpu>CPU_THRESHOLD or ram>RAM_THRESHOLD: logger.warning(f"Thresholds exceeded — CPU:{cpu:.1f}% RAM:{ram:.1f}%")
             if time.time()-last_backup>backup_interval:
                 bn=f"/opt/CryzonCloud/backups/vps_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-                try: os.makedirs('/opt/CryzonCloud/backups', exist_ok=True); shutil.copy(DB_PATH,bn); last_backup=time.time()
+                try: shutil.copy(DB_PATH,bn); last_backup=time.time()
                 except Exception as e: logger.error(f"Backup failed: {e}")
             time.sleep(60)
         except Exception as e: logger.error(f"Monitor error: {e}"); time.sleep(60)
@@ -877,7 +882,7 @@ async def status_cmd(ctx):
     await ctx.send(embed=embed)
 
 # ══════════════════════════════════════════════
-#  DYNAMIC ACTIVITY UPDATER (FIXED)
+#  DYNAMIC ACTIVITY UPDATER
 # ══════════════════════════════════════════════
 async def activity_updater():
     await bot.wait_until_ready()
@@ -905,7 +910,6 @@ async def activity_updater():
         except:
             await asyncio.sleep(60)
 
-# ── FIXED: Use setup_hook instead of bot.loop ──
 async def _setup_hook():
     asyncio.create_task(activity_updater())
 
