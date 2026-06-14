@@ -1,44 +1,3 @@
-#!/bin/bash
-# ═══════════════════════════════════════════════════════
-# CryzonCloud VPS Manager — Auto-Installer
-# Author: iTzTasin69
-# ═══════════════════════════════════════════════════════
-
-# Check if running as root
-if [[ $EUID -ne 0 ]]; then
-   echo "❌ Please run this script as root!"
-   exit 1
-fi
-
-echo "☁️  Welcome to CryzonCloud VPS Manager Installer"
-echo "═══════════════════════════════════════════════════"
-echo ""
-
-# 1. Update System & Install Dependencies
-echo "📦 Updating system and installing dependencies..."
-apt update && apt upgrade -y
-apt install -y python3 python3-pip lxd lxd-client sqlite3 curl systemctl
-
-# 2. Initialize LXD (Storage & Network) if not already initialized
-echo "🖥️  Configuring LXD..."
-if ! lxc list &> /dev/null; then
-    lxd init --auto --storage-backend=dir --network-address=0.0.0.0 --network-port=8443
-    echo "✅ LXD Initialized."
-else
-    echo "✅ LXD is already initialized."
-fi
-
-# 3. Install Python Dependencies
-echo "🐍 Installing Python packages..."
-pip3 install discord.py
-
-# 4. Create Bot Directory
-echo "📁 Setting up directory /opt/CryzonCloud..."
-mkdir -p /opt/CryzonCloud
-
-# 5. Write the Bot Code
-echo "📝 Generating bot code..."
-cat << 'EOFBOT' > /opt/CryzonCloud/bot.py
 # bot.py — iTzTasin69 CRYZON CLOUD ⚡ Ultra-Premium Edition
 import discord
 from discord.ext import commands
@@ -80,7 +39,7 @@ OS_OPTIONS = [
 ]
 
 # ──────────────────────────────────────────────
-#  PREMIUM COLOUR PALETTE  (Cyber-Neon Theme)
+#  PREMIUM COLOUR PALETTE
 # ──────────────────────────────────────────────
 class Colors:
     PRIMARY    = 0x6C63FF
@@ -265,13 +224,6 @@ def error_embed(title:str, desc:str="") -> discord.Embed: return build_embed(f"�
 def info_embed(title:str, desc:str="") -> discord.Embed: return build_embed(f"💡  {title}", desc, Colors.INFO)
 def warn_embed(title:str, desc:str="") -> discord.Embed: return build_embed(f"⚠️  {title}", desc, Colors.WARNING)
 def gold_embed(title:str, desc:str="") -> discord.Embed: return build_embed(f"👑  {title}", desc, Colors.GOLD)
-
-def create_embed(title, description="", color=Colors.PRIMARY): return build_embed(title, description, color)
-def add_field(embed, name, value, inline=False): return field(embed, name, value, inline)
-def create_success_embed(title, description=""): return success_embed(title, description)
-def create_error_embed(title, description=""): return error_embed(title, description)
-def create_info_embed(title, description=""): return info_embed(title, description)
-def create_warning_embed(title, description=""): return warn_embed(title, description)
 
 def status_badge(vps:dict) -> str:
     s = vps.get('status','unknown'); sus = vps.get('suspended',False); wl = vps.get('whitelisted',False)
@@ -924,15 +876,40 @@ async def status_cmd(ctx):
     field(embed,"🎮  Quick Commands",f"```\n{PREFIX}myvps       — Your VPS fleet\n{PREFIX}manage      — Control panel\n{PREFIX}status      — This page\n{PREFIX}help        — All commands\n```",True)
     await ctx.send(embed=embed)
 
+# ══════════════════════════════════════════════
+#  DYNAMIC ACTIVITY UPDATER (FIXED)
+# ══════════════════════════════════════════════
 async def activity_updater():
-    await bot.wait_until_ready(); cycle=0
-    statuses=[lambda r,t:f"⚡ CryzonCloud | {r}/{t} VPS Online",lambda r,t:f"☁️ Managing {t} VPS Instances",lambda r,t:f"🚀 {BOT_NAME}",lambda r,t:f"🖥️ {r} Servers Running",lambda r,t:f"⚡ by iTzTasin69 | {t} VPS"]
+    await bot.wait_until_ready()
+    cycle = 0
+    statuses = [
+        lambda r, t: f"⚡ CryzonCloud | {r}/{t} VPS Online",
+        lambda r, t: f"☁️ Managing {t} VPS Instances",
+        lambda r, t: f"🚀 {BOT_NAME}",
+        lambda r, t: f"🖥️ {r} Servers Running",
+        lambda r, t: f"⚡ by iTzTasin69 | {t} VPS",
+    ]
     while not bot.is_closed():
         try:
-            total_vps=sum(len(v) for v in vps_data.values()); running=sum(1 for vl in vps_data.values() for v in vl if v.get('status')=='running' and not v.get('suspended'))
-            await bot.change_presence(status=discord.Status.online,activity=discord.Activity(type=discord.ActivityType.watching,name=statuses[cycle%len(statuses)](running,total_vps))); cycle+=1; await asyncio.sleep(60)
-        except: await asyncio.sleep(60)
-bot.loop.create_task(activity_updater())
+            total_vps = sum(len(v) for v in vps_data.values())
+            running = sum(1 for vl in vps_data.values() for v in vl if v.get('status') == 'running' and not v.get('suspended'))
+            await bot.change_presence(
+                status=discord.Status.online,
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name=statuses[cycle % len(statuses)](running, total_vps)
+                )
+            )
+            cycle += 1
+            await asyncio.sleep(60)
+        except:
+            await asyncio.sleep(60)
+
+# ── FIXED: Use setup_hook instead of bot.loop ──
+async def _setup_hook():
+    asyncio.create_task(activity_updater())
+
+bot.setup_hook = _setup_hook
 
 @bot.command(name='help')
 async def help_cmd(ctx):
@@ -945,45 +922,3 @@ async def help_cmd(ctx):
     await ctx.send(embed=embed)
 
 bot.run(DISCORD_TOKEN)
-EOFBOT
-
-# 6. Create Systemd Service
-echo "⚙️  Creating background service..."
-cat << 'EOFSVC' > /etc/systemd/system/cryzoncloud.service
-[Unit]
-Description=CryzonCloud VPS Manager Bot
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/CryzonCloud
-ExecStart=/usr/bin/python3 /opt/CryzonCloud/bot.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOFSVC
-
-# 7. Start the Service
-echo "🚀 Starting CryzonCloud Bot..."
-systemctl daemon-reload
-systemctl enable cryzoncloud
-systemctl restart cryzoncloud
-
-echo ""
-echo "═══════════════════════════════════════════════════"
-echo "✅  CryzonCloud VPS Manager Installed Successfully!"
-echo "═══════════════════════════════════════════════════"
-echo ""
-echo "📂 Bot Location  : /opt/CryzonCloud/bot.py"
-echo "📂 Database      : /opt/CryzonCloud/vps.db"
-echo "📂 Logs          : /opt/CryzonCloud/bot.log"
-echo ""
-echo "🎮 Service Commands:"
-echo "  Status  : systemctl status cryzoncloud"
-echo "  Restart : systemctl restart cryzoncloud"
-echo "  Stop    : systemctl stop cryzoncloud"
-echo "  Logs    : journalctl -u cryzoncloud -f"
-echo ""
