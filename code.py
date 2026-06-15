@@ -18,7 +18,7 @@ import random
 # ──────────────────────────────────────────────
 #  CONFIGURATION
 # ──────────────────────────────────────────────
-DISCORD_TOKEN      = os.getenv('DISCORD_TOKEN', 'MTUxNTYyNTA3MzYyMzQzNzM1Mw.G4I9bn.QaHCRGkDPcNSvGP2f_0N80IRpbIcjqxW6_9ptw')
+DISCORD_TOKEN      = os.getenv('DISCORD_TOKEN', 'MTUxNTYyNTA3MzYyMzQzNzM1Mw.GlzFbb.MQef_-vtPHMl6Di-rTFJYSlyT_TCu526ESQtos')
 BOT_NAME           = os.getenv('BOT_NAME', 'CryzonCloud VPS Manager')
 PREFIX             = os.getenv('PREFIX', 'cc!')
 YOUR_SERVER_IP     = os.getenv('YOUR_SERVER_IP', '127.0.0.1')
