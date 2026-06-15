@@ -16,14 +16,31 @@ import sqlite3
 import random
 
 # ──────────────────────────────────────────────
+#  LOAD .ENV FILE (No external libraries needed)
+# ──────────────────────────────────────────────
+_env_path = '/opt/CryzonCloud/.env'
+if os.path.exists(_env_path):
+    with open(_env_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                os.environ.setdefault(key.strip(), value.strip())
+
+# ──────────────────────────────────────────────
 #  CONFIGURATION
 # ──────────────────────────────────────────────
-DISCORD_TOKEN      = os.getenv('DISCORD_TOKEN', 'MTUxNTYyNTA3MzYyMzQzNzM1Mw.G6yfXx.CjdWOrhWYej4fK9M5y0QamIASXgrGdIr7FZogM')
+DISCORD_TOKEN      = os.getenv('DISCORD_TOKEN')
 BOT_NAME           = os.getenv('BOT_NAME', 'CryzonCloud VPS Manager')
 PREFIX             = os.getenv('PREFIX', 'cc!')
 YOUR_SERVER_IP     = os.getenv('YOUR_SERVER_IP', '127.0.0.1')
 MAIN_ADMIN_ID      = int(os.getenv('MAIN_ADMIN_ID', '1303298824382582784'))
 DEFAULT_STORAGE_POOL = os.getenv('DEFAULT_STORAGE_POOL', 'default')
+
+if not DISCORD_TOKEN:
+    print("❌ ERROR: DISCORD_TOKEN is missing!")
+    print("👉 Create /opt/CryzonCloud/.env with: DISCORD_TOKEN=your_token_here")
+    raise SystemExit("Missing DISCORD_TOKEN")
 
 # ──────────────────────────────────────────────
 #  OS OPTIONS
