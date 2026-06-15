@@ -910,6 +910,7 @@ async def activity_updater():
         except:
             await asyncio.sleep(60)
 
+# ── FIXED: Use setup_hook instead of bot.loop ──
 async def _setup_hook():
     asyncio.create_task(activity_updater())
 
