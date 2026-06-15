@@ -18,7 +18,7 @@ import random
 # ──────────────────────────────────────────────
 #  CONFIGURATION
 # ──────────────────────────────────────────────
-DISCORD_TOKEN      = os.getenv('DISCORD_TOKEN', 'MTUxNTYyNTA3MzYyMzQzNzM1Mw.GRU91d.VWd0GH4vff7g3Z5l4JA5QuEAKgnER6erAaVO3A')
+DISCORD_TOKEN      = os.getenv('DISCORD_TOKEN', 'MTUxNTYyNTA3MzYyMzQzNzM1Mw.G6yfXx.CjdWOrhWYej4fK9M5y0QamIASXgrGdIr7FZogM')
 BOT_NAME           = os.getenv('BOT_NAME', 'CryzonCloud VPS Manager')
 PREFIX             = os.getenv('PREFIX', 'cc!')
 YOUR_SERVER_IP     = os.getenv('YOUR_SERVER_IP', '127.0.0.1')
@@ -62,7 +62,7 @@ class Colors:
 # ──────────────────────────────────────────────
 #  DIRECTORIES — Create before logging
 # ──────────────────────────────────────────────
-os.makedirs('/opt/CryzonCloud/backups', exist_ok=True)
+os.makedirs('/bot/CryzonCloud/backups', exist_ok=True)
 
 # ──────────────────────────────────────────────
 #  LOGGING
