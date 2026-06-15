@@ -62,7 +62,7 @@ class Colors:
 # ──────────────────────────────────────────────
 #  DIRECTORIES — Create before logging
 # ──────────────────────────────────────────────
-os.makedirs('/bot/CryzonCloud/backups', exist_ok=True)
+os.makedirs('/opt/CryzonCloud/backups', exist_ok=True)
 
 # ──────────────────────────────────────────────
 #  LOGGING
