@@ -16,7 +16,7 @@ import sqlite3
 import random
 
 # ──────────────────────────────────────────────
-#  LOAD .ENV FILE (No external libraries needed)
+#  LOAD .ENV FILE
 # ──────────────────────────────────────────────
 _env_path = '/opt/CryzonCloud/.env'
 if os.path.exists(_env_path):
@@ -77,7 +77,7 @@ class Colors:
     LIME       = 0x76FF03
 
 # ──────────────────────────────────────────────
-#  DIRECTORIES — Create before logging
+#  DIRECTORIES
 # ──────────────────────────────────────────────
 os.makedirs('/opt/CryzonCloud/backups', exist_ok=True)
 
@@ -306,6 +306,9 @@ async def execute_lxc(command:str, timeout:int=120):
     except asyncio.TimeoutError as te: logger.error(f"LXC timeout: {command} — {te}"); raise
     except Exception as e: logger.error(f"LXC Error: {command} — {e}"); raise
 
+# ══════════════════════════════════════════════
+#  LXC CONFIG — FIXED FOR NESTED VPS (modprobe fix)
+# ══════════════════════════════════════════════
 async def apply_lxc_config(container:str):
     try:
         await execute_lxc(f"lxc config set {container} security.nesting true")
@@ -315,7 +318,13 @@ async def apply_lxc_config(container:str):
         try: await execute_lxc(f"lxc config device add {container} fuse unix-char path=/dev/fuse")
         except Exception as e:
             if "already exists" not in str(e).lower(): raise
-        await execute_lxc(f"lxc config set {container} linux.kernel_modules overlay,loop,nf_nat,ip_tables,ip6_tables,netlink_diag,br_netfilter")
+        
+        # ── FIX: Kernel modules may fail on nested VPS — skip if unavailable ──
+        try:
+            await execute_lxc(f"lxc config set {container} linux.kernel_modules overlay,loop,nf_nat,ip_tables,ip6_tables,netlink_diag,br_netfilter")
+        except Exception as e:
+            logger.warning(f"⚠️ Kernel modules skipped for {container} (safe to ignore on nested VPS): {e}")
+        
         raw="""lxc.apparmor.profile = unconfined\nlxc.cgroup.devices.allow = a\nlxc.cap.drop =\nlxc.mount.auto = proc:rw sys:rw cgroup:rw\n"""
         await execute_lxc(f"lxc config set {container} raw.lxc '{raw}'")
     except Exception as e: logger.error(f"LXC config failed for {container}: {e}")
@@ -798,25 +807,34 @@ async def whitelist_vps(ctx, container:str):
             if vps['container_name']==container: vps['whitelisted']=not vps.get('whitelisted',False); save_vps_data(); await ctx.send(embed=success_embed("Whitelist Updated","")); return
     await ctx.send(embed=error_embed("Not Found",f"`{container}`"))
 
+# ══════════════════════════════════════════════
+#  ADMIN MANAGEMENT COMMANDS
+# ══════════════════════════════════════════════
 @bot.command(name='add-admin')
 @is_main_admin()
 async def add_admin(ctx, user:discord.Member):
     uid=str(user.id)
-    if uid in admin_data['admins']: await ctx.send(embed=warn_embed("Already Admin","")); return
-    admin_data['admins'].append(uid); save_admin_data(); await ctx.send(embed=success_embed("Admin Added",f"{user.mention}"))
+    if uid in admin_data['admins']: await ctx.send(embed=warn_embed("Already Admin",f"{user.mention} is already an admin.")); return
+    admin_data['admins'].append(uid); save_admin_data()
+    await ctx.send(embed=success_embed("Admin Added",f"{user.mention} is now a **CryzonCloud Admin** 🛡️"))
 
 @bot.command(name='remove-admin')
 @is_main_admin()
 async def remove_admin(ctx, user:discord.Member):
     uid=str(user.id)
-    if uid not in admin_data['admins']: await ctx.send(embed=warn_embed("Not Admin","")); return
-    admin_data['admins'].remove(uid); save_admin_data(); await ctx.send(embed=success_embed("Admin Removed",f"{user.mention}"))
+    if uid not in admin_data['admins']: await ctx.send(embed=warn_embed("Not Admin",f"{user.mention} is not an admin.")); return
+    admin_data['admins'].remove(uid); save_admin_data()
+    await ctx.send(embed=success_embed("Admin Removed",f"{user.mention} is no longer an admin. 🔧"))
 
 @bot.command(name='admins')
 @is_admin()
 async def list_admins(ctx):
-    admin_list=[f"👑 <@{MAIN_ADMIN_ID}> — **Main Admin**"] + [f"🔧 <@{aid}>" for aid in admin_data['admins'] if aid!=str(MAIN_ADMIN_ID)]
-    await ctx.send(embed=info_embed("🛡️  Admin Team","\n".join(admin_list)))
+    admin_list=[f"👑 <@{MAIN_ADMIN_ID}> — **Main Admin**"]
+    for aid in admin_data['admins']:
+        if aid!=str(MAIN_ADMIN_ID): admin_list.append(f"🔧 <@{aid}>")
+    embed=info_embed("🛡️  CryzonCloud Admin Team",f"{DIV}\n" + "\n".join(admin_list))
+    field(embed, "📝  Manage Admins", f"```\n{PREFIX}add-admin @user\n{PREFIX}remove-admin @user\n```", False)
+    await ctx.send(embed=embed)
 
 @bot.command(name='exec')
 @is_admin()
@@ -927,7 +945,6 @@ async def activity_updater():
         except:
             await asyncio.sleep(60)
 
-# ── FIXED: Use setup_hook instead of bot.loop ──
 async def _setup_hook():
     asyncio.create_task(activity_updater())
 
@@ -940,6 +957,8 @@ async def help_cmd(ctx):
     field(embed,"🎮  User Commands",f"```\n{PREFIX}ping        — Check latency\n{PREFIX}uptime      — Host uptime\n{PREFIX}myvps       — Your VPS fleet\n{PREFIX}manage      — VPS control panel\n{PREFIX}status      — Platform status\n{PREFIX}help        — This menu\n```",False)
     if is_adm:
         field(embed,"🛡️  Admin Commands",f"```\n{PREFIX}create <ram> <cpu> <disk> @user\n{PREFIX}start/stop/restart/delete <container>\n{PREFIX}suspend/unsuspend <container>\n{PREFIX}whitelist <container>\n{PREFIX}reinstall <container>\n{PREFIX}exec <container> <command>\n{PREFIX}vps-stats <container>\n{PREFIX}all-vps / lxc-list\n```",False)
+        if uid==str(MAIN_ADMIN_ID):
+            field(embed,"👑  Main Admin Commands",f"```\n{PREFIX}add-admin @user\n{PREFIX}remove-admin @user\n{PREFIX}admins\n```",False)
     field(embed,"📡  Platform",f"**{BOT_NAME}** by **iTzTasin69**\n⚡ Powered by LXC  ·  🔒 Secure  ·  🚀 Fast",False)
     await ctx.send(embed=embed)
 
